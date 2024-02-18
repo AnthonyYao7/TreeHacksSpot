@@ -35,11 +35,17 @@ def take_image_handler(spot, sock, command=None):
 
 
 def move_towards_point_handler(spot, sock, command):
-    pass
+    point = command[len('move_towards_point'):]
+    x, w = point.split(',')
+
+    print(f"Moving {(x - w // 2) / 200} radians")
 
 
 def asr_handler(spot, sock, command):
-    pass
+    sample_name = str(int(time.time() * 1000)) + '.wav'
+    cmd = f'arecord -vv --format=cd -r 48000 --duration=10 -c 1 {sample_name}'
+    os.system(cmd)
+    send_file(sample_name, sock)
 
 
 COMMAND_HANDLERS = {'take_image': take_image_handler,
