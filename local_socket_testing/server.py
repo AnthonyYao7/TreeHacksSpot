@@ -3,6 +3,7 @@ from threading import Thread, Lock
 import struct
 from enum import Enum
 from ultralytics import YOLO
+import queue
 import time
 
 ROTATION_ANGLE = {
@@ -12,6 +13,10 @@ ROTATION_ANGLE = {
     'left_fisheye_image': 0,
     'right_fisheye_image': 180
 }
+
+
+mq = queue.Queue()
+
 
 
 class RobotStates(Enum):
