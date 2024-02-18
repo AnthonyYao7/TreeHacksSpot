@@ -70,15 +70,40 @@ def take_image_handler(spot, sock, command=None):
         send_file(image_saved_path, sock)
 
 
+def remove_non_numeric(s):
+    # Using filter and lambda to remove non-numeric characters
+    filtered = filter(lambda x: x.isdigit(), s)
+    # Joining the filtered characters back into a string
+    return ''.join(filtered)
+
+
 def move_towards_point_handler(spot, sock, command):
+    print(command)
     point = command[len('move_towards_point'):]
     x, w = point.split(',')
+    x = int(remove_non_numeric(x))
+    w = int(remove_non_numeric(w))
 
-    spot.move_by_velocity_control(v_x=0, v_y=0, v_rot=(x - w // 2) / 200, cmd_duration=1)
+    spot.move_by_velocity_control(v_x=0, v_y=0, v_rot=(x - w // 2) / 6000, cmd_duration=1)
+    time.sleep(4)
 
 
 def asr_handler(spot, sock, command):
-    pass
+    print("Start recording audio")
+    dest_file = "spotQuery.wav"
+    cmd = f'arecord -vv --format=cd --device={os.environ["AUDIO_INPUT_DEVICE"]} -r 48000 --duration=10 -c 1 {dest_file}'
+    try:
+        # Execute the audio recording command
+        # subprocess.run(cmd, shell=True, check=True)
+        # Send the recorded audio file to the local machine
+        os.system(cmd)
+        send_file(dest_file, sock)
+    except Exception as e:
+        print(f"Error during audio recording: {e}")
+    finally:
+        # Clean up: remove the temporary audio file on Spot
+        os.remove(dest_file)
+    print(cmd)
 
 
 COMMAND_HANDLERS = {'take_image': take_image_handler,

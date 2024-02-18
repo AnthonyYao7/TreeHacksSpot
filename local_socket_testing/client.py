@@ -27,18 +27,33 @@ def take_image_handler(spot, sock, command=None):
     sources = ['back_fisheye_image', 'frontleft_fisheye_image', 'frontright_fisheye_image', 'left_fisheye_image',
                'right_fisheye_image']
 
-    img = 128 * np.ones((512, 512, 3), dtype=np.uint8)
+    # img = 128 * np.ones((512, 512, 3), dtype=np.uint8)
+
+    cap = cv2.VideoCapture(0)
+
+    ret, frame = cap.read()
+
     filename = str(int(time.time() * 1000)) + '_' + 'frontleft_fisheye_image' + '.jpg'
-    cv2.imwrite(filename, img)
+    cv2.imwrite(filename, frame)
 
     send_file(filename, sock)
 
+def remove_non_numeric(s):
+    # Using filter and lambda to remove non-numeric characters
+    filtered = filter(lambda x: x.isdigit(), s)
+    # Joining the filtered characters back into a string
+    return ''.join(filtered)
 
 def move_towards_point_handler(spot, sock, command):
+    print(command)
     point = command[len('move_towards_point'):]
     x, w = point.split(',')
+    x = int(remove_non_numeric(x))
+    w = int(remove_non_numeric(w))
 
-    print(f"Moving {(x - w // 2) / 200} radians")
+    print(x, w)
+
+    print(f"Moving {(x - w // 2) / 6000} radians")
 
 
 def asr_handler(spot, sock, command):

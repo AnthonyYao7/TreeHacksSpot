@@ -5,6 +5,7 @@ from enum import Enum
 from ultralytics import YOLO
 from collections import deque
 import time
+import cv2
 
 ROTATION_ANGLE = {
     'back_fisheye_image': 0,
@@ -21,6 +22,7 @@ mq = deque()
 def send_commands(sock):
     global mq
     while True:
+        print("Waiting for file")
         while len(mq) == 0: time.sleep(1)
 
         command = mq.popleft()
@@ -33,8 +35,8 @@ class RobotStates(Enum):
     WALKING = 3  # robot is facing towards the target and will start walking
 
 
-robot_state = RobotStates.TARGETING
-robot_state_mutex = Lock()
+# robot_state = RobotStates.TARGETING
+# robot_state_mutex = Lock()
 
 file_handler_threads = []
 
@@ -51,61 +53,91 @@ def int_from_bytes(bt):
 
 
 def handle_new_file(file):
+    global target_class
+
     ext = file.split('.')[1]
 
-    with robot_state_mutex:
-        if ext == 'jpg':
-            if robot_state != RobotStates.TARGETING:
-                print("JPG files only relevant in targeting stage")
-                return
+    # with robot_state_mutex:
+    if ext == 'jpg':
+        # if robot_state != RobotStates.TARGETING:
+        #     print("JPG files only relevant in targeting stage")
+        #     return
 
-            results = model(file)[0]
-            boxes = results.boxes.xyxy.numpy()
-            class_names = results.names
-            pred = results.boxes.cls.numpy()
+        results = model(file)[0]
+        boxes = results.boxes.xyxy.numpy()
+        class_names = results.names
+        pred = results.boxes.cls.numpy()
 
-            global translation, most_recent_boxes, most_recent_classes
-            if translation is None:
-                translation = class_names
+        global translation, most_recent_boxes, most_recent_classes
+        if translation is None:
+            translation = class_names
 
-            most_recent_classes = pred
-            most_recent_boxes = boxes
+        most_recent_classes = pred
+        most_recent_boxes = boxes
 
-            if target_class is None:
-                return
+        print(target_class)
 
-            ind = None
+        if target_class is None:
+            return
 
-            for i, cl in enumerate(pred):
-                if cl == target_class:
-                    ind = i
-                    break
+        ind = None
 
-            if ind is None:
-                print("im fucked")
+        for i, cl in enumerate(pred):
+            if cl == target_class:
+                ind = i
+                break
 
-            rel_bbox = most_recent_boxes[ind]
-            dims = results.orig_shape
-            x_hat = (rel_bbox[0] + rel_bbox[2]) // 2
-            mq.append(f"move_towards_point{x_hat},{dims[1]}")
+        if ind is None:
+            print("im fucked")
 
-            """
-            Call yolo on jpg and get bounding boxes and return response to spot
-            """
+        image = cv2.imread(file)
+        w = image.shape[1]
 
-        elif ext == 'wav':
-            if robot_state != RobotStates.WAITING_FOR_COMMAND:
-                print("WAV files only relevant when waiting for commands")
-                return
+        rel_bbox = most_recent_boxes[ind]
+        dims = results.orig_shape
+        x_hat = (rel_bbox[0] + rel_bbox[2]) // 20
+        mq.append(f"move_towards_point{x_hat},{w}")
 
+        """
+        Call yolo on jpg and get bounding boxes and return response to spot
+        """
 
+    elif ext == 'wav':
+        # if robot_state != RobotStates.WAITING_FOR_COMMAND:
+        #     print("WAV files only relevant when waiting for commands")
+        #     return
+        """
+        Send wav file to whisper api for transcription
+        """
+        from openai import OpenAI
+        client = OpenAI(api_key="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")
+        audio_file = open(file, "rb")
+        vocal_query = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file,
+            response_format="text"
+        )
 
-            """
-            Send wav file to whisper api for transcription
-            """
-
-        else:
-            pass
+        obj_arr = [translation[most_recent_classes[i]] for i in range(len(most_recent_classes))]
+        # translation: number to object
+        prompt = f"{obj_arr} \n YOUR TASK: given the previous array of strings denoting objects detected in an image, isolate only one object that matches the object specified by the following verbal query: \"{vocal_query}\" \n THIS IS VERY IMPORTANT: ONLY RETURN THE NUMERICAL 0-BASED INDEX OF THE FIRST SUCH RELEVANT OBJECT IN THE ARRAY, WITH NO OTHER TEXT IN YOUR OUTPUT"
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}]
+        )
+        resp_ret = response.choices[0].message.content
+        # for term in translation:
+        try:
+            # if translation[term] == translation[most_recent_classes[int(resp_ret)]]:
+            target_class = int(most_recent_classes[int(resp_ret)])
+            print('aowiefjwiaofj', target_class)
+        except ValueError:
+            print("errored out")
+            print(resp_ret)
+    else:
+        pass
 
 
 def read_bytes(sock, n):
@@ -164,6 +196,8 @@ def handle_client_connection(client_socket: socket.socket, address, file_name_pr
             args=(client_socket,)
         )
 
+        message_sending_thread.start()
+
         while True:
             command = input("Start process:")
             if command == "ligma":
@@ -171,9 +205,15 @@ def handle_client_connection(client_socket: socket.socket, address, file_name_pr
 
             seq = ['take_image',
                    'start_asr',
-                   'move_towards_point',
                    'take_image',
-                   'move_towards_point']
+                   'take_image',
+                   'take_image',
+                   'take_image',
+                   'take_image',
+                   'take_image',
+                   'take_image',
+                   'take_image',
+                   'take_image']
 
             for inst in seq:
                 mq.append(inst)
