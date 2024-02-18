@@ -3,7 +3,7 @@ from threading import Thread, Lock
 import struct
 from enum import Enum
 from ultralytics import YOLO
-import queue
+from collections import deque
 import time
 
 ROTATION_ANGLE = {
@@ -15,8 +15,16 @@ ROTATION_ANGLE = {
 }
 
 
-mq = queue.Queue()
+mq = deque()
 
+
+def send_commands(sock):
+    global mq
+    while True:
+        while len(mq) == 0: time.sleep(1)
+
+        command = mq.popleft()
+        sock.sendall((command + '\n').encode('utf-8'))
 
 
 class RobotStates(Enum):
@@ -50,7 +58,7 @@ def handle_new_file(file):
                 print("JPG files only relevant in targeting stage")
                 return
 
-            results = model("files/scenery.jpeg")[0]
+            results = model(file)[0]
             boxes = results.boxes.xyxy.numpy()
             class_names = results.names
             pred = results.boxes.cls.numpy()
@@ -62,7 +70,6 @@ def handle_new_file(file):
             most_recent_classes = pred
             most_recent_boxes = boxes
 
-
             """
             Call yolo on jpg and get bounding boxes and return response to spot
             """
@@ -71,6 +78,8 @@ def handle_new_file(file):
             if robot_state != RobotStates.WAITING_FOR_COMMAND:
                 print("WAV files only relevant when waiting for commands")
                 return
+
+
 
             """
             Send wav file to whisper api for transcription
@@ -131,6 +140,11 @@ def handle_client_connection(client_socket: socket.socket, address, file_name_pr
             args=(client_socket, address, file_name_prefix))
         reading_thread.start()
 
+        message_sending_thread = Thread(
+            target=send_commands,
+            args=(client_socket,)
+        )
+
         while True:
             command = input("Start process:")
             if command == "ligma":
@@ -143,9 +157,10 @@ def handle_client_connection(client_socket: socket.socket, address, file_name_pr
                    'move_towards_point']
 
             for inst in seq:
-                client_socket.sendall((inst + '\n').encode('utf-8'))
+                mq.append(inst)
 
         reading_thread.join()
+        message_sending_thread.join()
 
 
 def start_server(host, port, file_name_prefix):
