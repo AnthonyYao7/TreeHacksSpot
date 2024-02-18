@@ -6,6 +6,7 @@ from ultralytics import YOLO
 from collections import deque
 import time
 import cv2
+import os
 
 ROTATION_ANGLE = {
     'back_fisheye_image': 0,
@@ -110,7 +111,7 @@ def handle_new_file(file):
         Send wav file to whisper api for transcription
         """
         from openai import OpenAI
-        client = OpenAI(api_key="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")
+        client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
         audio_file = open(file, "rb")
         vocal_query = client.audio.transcriptions.create(
             model="whisper-1",
