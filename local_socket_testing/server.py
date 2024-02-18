@@ -110,7 +110,7 @@ def handle_new_file(file):
         Send wav file to whisper api for transcription
         """
         from openai import OpenAI
-        client = OpenAI(api_key="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")
+        client = OpenAI(api_key="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")
         audio_file = open(file, "rb")
         vocal_query = client.audio.transcriptions.create(
             model="whisper-1",
