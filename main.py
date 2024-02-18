@@ -71,7 +71,10 @@ def take_image_handler(spot, sock, command=None):
 
 
 def move_towards_point_handler(spot, sock, command):
-    pass
+    point = command[len('move_towards_point'):]
+    x, w = point.split(',')
+
+    spot.move_by_velocity_control(v_x=0, v_y=0, v_rot=(x - w // 2) / 200, cmd_duration=1)
 
 
 def asr_handler(spot, sock, command):

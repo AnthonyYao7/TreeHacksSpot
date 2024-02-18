@@ -43,6 +43,7 @@ model = YOLO("yolov8n.pt")
 translation = None
 most_recent_classes = None
 most_recent_boxes = None
+target_class = None
 
 
 def int_from_bytes(bt):
@@ -69,6 +70,24 @@ def handle_new_file(file):
 
             most_recent_classes = pred
             most_recent_boxes = boxes
+
+            if target_class is None:
+                return
+
+            ind = None
+
+            for i, cl in enumerate(pred):
+                if cl == target_class:
+                    ind = i
+                    break
+
+            if ind is None:
+                print("im fucked")
+
+            rel_bbox = most_recent_boxes[ind]
+            dims = results.orig_shape
+            x_hat = (rel_bbox[0] + rel_bbox[2]) // 2
+            mq.append(f"move_towards_point{x_hat},{dims[1]}")
 
             """
             Call yolo on jpg and get bounding boxes and return response to spot
