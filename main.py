@@ -4,6 +4,7 @@ import time
 from bosdyn.api import image_pb2
 from bosdyn.client.image import build_image_request
 from spot_controller import SpotController
+from ftplib import FTP
 import socket
 import numpy as np
 import cv2
@@ -58,6 +59,22 @@ def take_image_handler(spot, command=None):
 def move_towards_point_handler(spot, command):
     pass
 
+def upload_file(hostname, filepath):
+    try:
+        # Connect to the FTP server
+        ftp = FTP(hostname)
+        ftp.login()
+
+        # Change to binary mode to ensure correct file transfer
+        ftp.cwd('/')
+        ftp.storbinary('STOR ' + filepath.split('/')[-1], open(filepath, 'rb'))
+
+        print(f"File '{filepath}' uploaded successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        # Close the FTP connection
+        ftp.quit()
 
 
 def main():
@@ -100,40 +117,43 @@ def main():
             print("Failed to initialize Spot")
             return
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        try:
-            s.connect((HOST_ADDRESS, HOST_PORT))
-            print(f"Successfully connected to {HOST_ADDRESS}:{HOST_PORT}")
+        # try:
+        #     s.connect((HOST_ADDRESS, HOST_PORT))
+        #     print(f"Successfully connected to {HOST_ADDRESS}:{HOST_PORT}")
 
-            # You can send and receive data here using s.sendall() and s.recv()
-            # Example: s.sendall(b'Hello, server')
-        except Exception as e:
-            print(f"Failed to connect to {HOST_ADDRESS}:{HOST_PORT}")
-            print(f"Error: {e}")
-            s.close()
-            return
+        #     # You can send and receive data here using s.sendall() and s.recv()
+        #     # Example: s.sendall(b'Hello, server')
+        # except Exception as e:
+        #     print(f"Failed to connect to {HOST_ADDRESS}:{HOST_PORT}")
+        #     print(f"Error: {e}")
+        #     s.close()
+        #     return
 
-        buffer = ''
+        # buffer = ''
 
-        while True:
-            data = s.recv(4096)
+        # while True:
 
-            if not data:
-                print("Disconnected from the server.")
-                break
+        #     pass
 
-            buffer += data.decode('utf-8')
-            while '\n' in buffer:
-                command, buffer = buffer.split('\n', 1)
+            # data = s.recv(4096)
 
-                commands = {'take_image': take_image_handler,
-                            'move_towards_point': move_towards_point_handler}
+            # if not data:
+            #     print("Disconnected from the server.")
+            #     break
 
-                for comm, handler in commands:
-                    if comm in command:
-                        handler(spot, command)
-                        break
+            # buffer += data.decode('utf-8')
+            # while '\n' in buffer:
+            #     command, buffer = buffer.split('\n', 1)
+
+            #     commands = {'take_image': take_image_handler,
+            #                 'move_towards_point': move_towards_point_handler}
+
+            #     for comm, handler in commands:
+            #         if comm in command:
+            #             handler(spot, command)
+            #             break
 
                     # depth_bytes = depth.tobytes()
                     # visual_bytes = visual.tobytes()
@@ -142,7 +162,7 @@ def main():
                     # s.sendall(len(visual_bytes).to_bytes(4, 'little'))
                     # s.sendall(visual_bytes)
 
-        s.close()
+        # s.close()
 
 
 # 10.19.187.105

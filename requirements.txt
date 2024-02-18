@@ -4,3 +4,4 @@ bosdyn-choreography-client
 opencv-python
 numpy
 boto3
+pyftpdlib
