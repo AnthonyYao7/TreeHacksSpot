@@ -34,6 +34,7 @@ class RobotStates(Enum):
     WAITING_FOR_COMMAND = 1  # commands are of the form take me to something
     TARGETING = 2  # back and forth between robot and server with yolo and images
     WALKING = 3  # robot is facing towards the target and will start walking
+    # ALARM_MODE = 4
 
 
 # robot_state = RobotStates.TARGETING
