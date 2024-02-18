@@ -41,7 +41,7 @@ def take_image_handler(spot, sock, command=None):
 
     sources = ['frontleft_fisheye_image']
 
-    pixel_format = pixel_format_string_to_enum('PIXEL_FORMAT_RGB_U8')
+    pixel_format = pixel_format_string_to_enum('PIXEL_FORMAT_GREYSCALE_U8')
 
     image_request = [
         build_image_request(source, pixel_format=pixel_format)
@@ -51,7 +51,7 @@ def take_image_handler(spot, sock, command=None):
     image_responses = spot.get_images(image_request)
 
     for image in image_responses:
-        num_bytes = 3
+        num_bytes = 1
         dtype = np.uint8
         extension = '.jpg'
 
